@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: crikket-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-crikket}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD:-trust}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-crikket}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ghcr.io/redpangilinan/crikket-server:latest
+    platform: linux/amd64
+    pull_policy: always
+    restart: "no"
+    env_file:
+      - ./apps/server/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+    command: ["bun", "run", "--filter", "@crikket/db", "db:migrate"]
+
+  server:
+    image: ghcr.io/redpangilinan/crikket-server:latest
+    platform: linux/amd64
+    pull_policy: always
+    container_name: crikket-server
+    restart: unless-stopped
+    env_file:
+      - ./apps/server/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: ${SERVER_PORT:-7032}
+    ports:
+      - "${SERVER_PORT:-7032}:${SERVER_PORT:-7032}"
+      - "${WEB_PORT:-7031}:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://localhost:' + (process.env.SERVER_PORT || '7032')).then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web:
+    image: ghcr.io/redpangilinan/crikket-web:latest
+    platform: linux/amd64
+    pull_policy: always
+    container_name: crikket-web
+    restart: unless-stopped
+    env_file:
+      - ./apps/web/.env
+    depends_on:
+      server:
+        condition: service_healthy
+    network_mode: "service:server"
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://localhost:3001').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres_data:
