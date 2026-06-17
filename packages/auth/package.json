@@ -36,11 +36,13 @@
     "dotenv": "catalog:",
     "react": "catalog:",
     "resend": "catalog:",
+    "nodemailer": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@crikket/config": "workspace:*",
     "@types/react": "catalog:",
+    "@types/nodemailer": "catalog:",
     "typescript": "catalog:"
   }
 }

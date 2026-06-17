@@ -19,9 +19,8 @@ services:
       retries: 10
 
   migrate:
-    image: ghcr.io/redpangilinan/crikket-server:latest
+    image: crikket-server:local
     platform: linux/amd64
-    pull_policy: always
     restart: "no"
     env_file:
       - ./apps/server/.env
@@ -33,9 +32,11 @@ services:
     command: ["bun", "run", "--filter", "@crikket/db", "db:migrate"]
 
   server:
-    image: ghcr.io/redpangilinan/crikket-server:latest
+    build:
+      context: .
+      dockerfile: ./apps/server/Dockerfile
+    image: crikket-server:local
     platform: linux/amd64
-    pull_policy: always
     container_name: crikket-server
     restart: unless-stopped
     env_file:
@@ -48,6 +49,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${SERVER_PORT:-7032}
+      ALLOW_EMAIL_MOCK: "true"
     ports:
       - "${SERVER_PORT:-7032}:${SERVER_PORT:-7032}"
       - "${WEB_PORT:-7031}:3001"
@@ -64,9 +66,11 @@ services:
       retries: 12
 
   web:
-    image: ghcr.io/redpangilinan/crikket-web:latest
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    image: crikket-web:local
     platform: linux/amd64
-    pull_policy: always
     container_name: crikket-web
     restart: unless-stopped
     env_file:
