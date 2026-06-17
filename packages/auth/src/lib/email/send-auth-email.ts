@@ -1,8 +1,8 @@
 import { env } from "@crikket/env/server"
 import { render } from "@react-email/render"
+import nodemailer from "nodemailer"
 import type { ReactElement } from "react"
 import { Resend } from "resend"
-import nodemailer from "nodemailer"
 
 type SendAuthEmailInput = {
   to: string
@@ -49,8 +49,10 @@ export const sendAuthEmail = async ({
         html,
       })
       return
-    } catch (smtpError: any) {
-      throw new Error(`Failed to send auth email via SMTP: ${smtpError?.message || smtpError}`)
+    } catch (smtpError) {
+      throw new Error(
+        `Failed to send auth email via SMTP: ${(smtpError as Error)?.message || smtpError}`
+      )
     }
   }
 
@@ -78,15 +80,18 @@ export const sendAuthEmail = async ({
 
   // 3. Fallback to console logging if neither SMTP nor Resend is configured
   console.warn(
-    `\n==================================================\n` +
-    `[EMAIL MOCK] No email provider configured. Email details:\n` +
-    `TO: ${to}\n` +
-    `SUBJECT: ${subject}\n` +
-    `BODY: ${text}\n` +
-    `==================================================\n`
+    "\n==================================================\n" +
+      "[EMAIL MOCK] No email provider configured. Email details:\n" +
+      `TO: ${to}\n` +
+      `SUBJECT: ${subject}\n` +
+      `BODY: ${text}\n` +
+      "==================================================\n"
   )
 
-  if (env.NODE_ENV === "production" && process.env.ALLOW_EMAIL_MOCK !== "true") {
+  if (
+    env.NODE_ENV === "production" &&
+    process.env.ALLOW_EMAIL_MOCK !== "true"
+  ) {
     throw new Error(
       "Missing email configuration. Please configure either Resend (RESEND_API_KEY) or SMTP (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) in apps/server/.env."
     )

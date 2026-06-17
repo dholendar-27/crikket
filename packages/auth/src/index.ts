@@ -26,7 +26,7 @@ const DAY = 24 * HOUR
 
 const allowedSignupDomains = env.ALLOWED_SIGNUP_DOMAINS
 
-const isProduction = env.NODE_ENV === "production"
+const useSecure = env.BETTER_AUTH_URL.startsWith("https://")
 const trustedOrigins = Array.from(
   new Set([env.BETTER_AUTH_URL, ...env.CORS_ORIGINS])
 )
@@ -199,11 +199,11 @@ export const auth = betterAuth({
     },
   },
   advanced: {
-    useSecureCookies: isProduction,
+    useSecureCookies: useSecure,
     ...(crossSubDomainCookies ? { crossSubDomainCookies } : {}),
     defaultCookieAttributes: {
-      sameSite: isProduction ? "none" : "lax",
-      secure: isProduction,
+      sameSite: useSecure ? "none" : "lax",
+      secure: useSecure,
       httpOnly: true,
     },
   },
