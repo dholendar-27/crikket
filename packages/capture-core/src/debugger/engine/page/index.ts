@@ -120,4 +120,38 @@ export function installDebuggerPageRuntime(): void {
       passive: true,
     }
   )
+
+  // Capture uncaught exceptions
+  window.addEventListener(
+    "error",
+    (event) => {
+      const error = event.error
+      if (error instanceof Error) {
+        postConsole("error", [error])
+      } else {
+        const errorMsg = event.message || "Unknown error"
+        const locationInfo = event.filename
+          ? ` at ${event.filename}:${event.lineno}:${event.colno}`
+          : ""
+        postConsole("error", [`Uncaught ${errorMsg}${locationInfo}`])
+      }
+    },
+    { capture: true }
+  )
+
+  // Capture unhandled promise rejections
+  window.addEventListener(
+    "unhandledrejection",
+    (event) => {
+      const reason = event.reason
+      if (reason instanceof Error) {
+        postConsole("error", [reason])
+      } else if (typeof reason === "string") {
+        postConsole("error", [`Unhandled Rejection: ${reason}`])
+      } else {
+        postConsole("error", ["Unhandled Rejection:", reason])
+      }
+    },
+    { capture: true }
+  )
 }
