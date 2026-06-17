@@ -64,6 +64,44 @@ prompt_required_value() {
     warn "${label} is required."
   done
 }
+get_local_ip() {
+  local ip=""
+  if command_exists ipconfig; then
+    ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+  fi
+  if [[ -z "$ip" ]] && command_exists hostname; then
+    ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+  fi
+  if [[ -z "$ip" ]]; then
+    ip="$(ifconfig 2>/dev/null | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -n 1 || true)"
+  fi
+  printf '%s\n' "$ip"
+}
+
+USE_IP=false
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --ip)
+      USE_IP=true
+      shift
+      ;;
+    *)
+      warn "Unknown option: $1"
+      shift
+      ;;
+  esac
+done
+
+HOST_NAME="localhost"
+if [[ "$USE_IP" == "true" ]]; then
+  IP_ADDR="$(get_local_ip)"
+  if [[ -n "$IP_ADDR" ]]; then
+    info "Using detected IP address: ${IP_ADDR}"
+    HOST_NAME="${IP_ADDR}"
+  else
+    warn "Could not detect local IP address. Falling back to localhost."
+  fi
+fi
 
 info "Configuring Crikket local server setup..."
 
@@ -102,13 +140,13 @@ NODE_ENV=production
 
 # Database
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/crikket
-CORS_ORIGINS=http://localhost:7031
+CORS_ORIGINS=http://${HOST_NAME}:7031
 ALLOWED_SIGNUP_DOMAINS=*
 
 # Better Auth
 BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-BETTER_AUTH_URL=http://localhost:7032
-BETTER_AUTH_COOKIE_DOMAIN=localhost
+BETTER_AUTH_URL=http://${HOST_NAME}:7032
+BETTER_AUTH_COOKIE_DOMAIN=${HOST_NAME}
 
 # Payments
 ENABLE_PAYMENTS=false
@@ -144,9 +182,9 @@ EOF
 info "Writing apps/web/.env file..."
 mkdir -p "$(dirname "$WEB_ENV_FILE")"
 cat >"$WEB_ENV_FILE" <<EOF
-NEXT_PUBLIC_SITE_URL=http://localhost:7031
-NEXT_PUBLIC_APP_URL=http://localhost:7031
-NEXT_PUBLIC_SERVER_URL=http://localhost:7032
+NEXT_PUBLIC_SITE_URL=http://${HOST_NAME}:7031
+NEXT_PUBLIC_APP_URL=http://${HOST_NAME}:7031
+NEXT_PUBLIC_SERVER_URL=http://${HOST_NAME}:7032
 NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=false
 
 NEXT_PUBLIC_POSTHOG_KEY=
